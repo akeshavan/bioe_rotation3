@@ -21,6 +21,15 @@
                     "class": "", 
                     "text": "###Wednesday, March 5, 2014\n\n* Converting dicoms in /data/henry6/study_reBUILD: in notebook /data/henry6/keshavan/notebooks/Convert_Dicoms", 
                     "type": "text"
+                }, 
+                {
+                    "$$hashKey": "01I", 
+                    "height": "1000", 
+                    "info": {
+                        "height": "1000", 
+                        "url": "http://nbviewer.ipython.org/urls/dl.dropboxusercontent.com/u/9020198/notebooks/Convert_Dicoms.ipynb"
+                    }, 
+                    "type": "ipynb"
                 }
             ], 
             "href": "Reports", 
