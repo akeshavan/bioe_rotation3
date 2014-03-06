@@ -1,0 +1,38 @@
+{
+    "sidebars": [
+        {
+            "$$hashKey": "004", 
+            "class": "active", 
+            "content": [
+                {
+                    "$$hashKey": "00F", 
+                    "class": "", 
+                    "text": "###Monday, March 3, 2014\n\n* Filled out ISMRM Trainee form\n  * Updated CV\n  * Letter\n  * Completed Trainee form\n  * Registration Form\n* Talked to Nico about the Neeb protocol and NODDI for the **Rebuild project**\n  * He sent many papers for me to read\n  * Data is in /data/henry6 but I don't have access\n* Sent an email to Peter Storey about being added to the henrylab group\n* Finished my spectroscopy homework\n* Finished summarizing [results](http://nbviewer.ipython.org/urls/dl.dropboxusercontent.com/u/9020198/notebooks/Results.ipynb) from rotation 2 at Dr. Sarah Nelson's Lab", 
+                    "type": "text"
+                }, 
+                {
+                    "$$hashKey": "01A", 
+                    "class": "", 
+                    "text": "###Tuesday, March 4, 2014\n####Meeting at Berkeley\n#####Simultaneous MultiSlice EPI\n* CAIPI - controlled aliasing\n* slice leakage increases with # multiband normally, but blipped caipi its not as bad\n* Multiband: RF pulse excites multiple slices - get signal with all images layered on each other. use coil strengths to weight signals and separate slices.\n* Controlled aliasing - partially separate images in PE\n* get better networks from smaller TR even though ~6s fluctuations\n\n#####Multiband EPI\n* coil compression - computation cost for reconstruction\n* array data is correlated - so we can compress w/out losing signal\n* compress before recon and inexpensive\n*GRAPPA approach, N=#coils, calibration O(n^3) or O(n^4)\n* *Hardware*: Linear comb to reduce #channels \"eigencoils\"\n* *Software*: sensitivity bsed, automatic selection, **data based**\n* SVD/PCA based coil compression: kpsace data --> SVD eigenvector matrix\n  * **How do you decide what is dominant?**\n* FFT on one axis - kspace all coils see, realspace some coils see\n  * different compression matrix for each x position for all k_y's\n  * 32 channels --> 5 w/ no info loss\n  * each line (x pos) has its own SVD, take **5** (why 5?)\n    * need to align basis functions (make it \"smooth\")\n\n#####Motion\n* What is G factor? Multiband factor?\n* Motion sensitivity: reference scans mess things up\n  * get better basis sets - track movement of head\n\n##### DIffusion MRI\n* Sensory processing disorder\n  * unusual behavioral responses to sensory stuff -- autism & ADHD, premature infants and fragile X\n  * abnormal wm microstructure\n\n#####Spectroscopy\n* slice selective inversion recovery", 
+                    "type": "text"
+                }, 
+                {
+                    "$$hashKey": "08H", 
+                    "class": "", 
+                    "text": "###Wednesday, March 5, 2014\n\n* Converting dicoms in /data/henry6/study_reBUILD: in notebook /data/henry6/keshavan/notebooks/Convert_Dicoms", 
+                    "type": "text"
+                }
+            ], 
+            "href": "Reports", 
+            "title": "Week 1"
+        }, 
+        {
+            "$$hashKey": "0QD", 
+            "class": "", 
+            "content": [], 
+            "href": "Week-2", 
+            "title": "Week 2"
+        }
+    ], 
+    "title": "rotation3"
+}
