@@ -42,6 +42,18 @@
                     "class": "bs-callout bs-callout-warning", 
                     "text": "####Potential Issue\n* I only see 1 fieldmapping file - epidewarp.fsl takes **2** - a phase and magnitude image\n* I might have to write a new workflow using fugue and prelude, instead of using freesurfer's wrapper.", 
                     "type": "text"
+                }, 
+                {
+                    "$$hashKey": "01O", 
+                    "class": "", 
+                    "text": "#### Reading: A new method for fast quantitative mapping of absolute water content in vivo\n\n* Can measure absolute water content in the brain\n* Clinically useful for brain edema dynamics (edema from stroke, brain tumors, etc)\n* New method is based on T1(TAPIR) and T2*(QUTE) \n  * fast, efficient and precise sampling of T2* and T1 curves\n\n#### Homework:\n* Did center frequency scan for SSFP sequence\n  * /data/bioe5/epic/freq_scan", 
+                    "type": "text"
+                }, 
+                {
+                    "$$hashKey": "01S", 
+                    "class": "", 
+                    "text": "###Friday, March 7, 2014\n####Homework\n  * Spectroscopy homework due", 
+                    "type": "text"
                 }
             ], 
             "href": "Reports", 
