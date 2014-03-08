@@ -52,8 +52,29 @@
                 {
                     "$$hashKey": "01S", 
                     "class": "", 
-                    "text": "###Friday, March 7, 2014\n####Homework\n  * Spectroscopy homework due", 
+                    "text": "###Friday, March 7, 2014\n* mailed in ISMRM form because I got no confirmation from email  or fax..\n\n####Resting-State fMRI: reBUILD\n* running bips workflow 77, just to make sure all nodes work. \n  * No field map\n  * No simultaneous, no slice time\n  * running locally on euler\n  * one subject, ms1649\n  * bips 77 works as is!\n* make fsaverage 5 corrmap, do interactive display\n  * surface corr matrix is breaking.. Because I mapped to the subject's surface instead of fsasverage5!!!\n* if this works, delete and figure out how to do fieldmapping\n\n####Homework\n  * Spectroscopy homework due\n\n#### Reading: A new method for fast quantitative mapping of absolute water content in vivo\n* QUTE = Quantitive T2* Image\n* \"Quantitative in vivo measurement of water content using MRI is based on the proportionality of the MR signal to the number of protons in an image volume which is again proportional to the water content in that volume\"\n* only protons from water, not fat contribute to signal. Valid assumption except for fat!\n* \"Fitting the T 2 relaxation curve results in the determination of the parameter S 0,T2* (tissue), which is the tissue equilibrium magnetization determined from the T 2 map\"\n* place a reference probe with 100% water in the FOV during measurement (S0,T2* reference)\n  * but reference probe as at room temperature\n  * affected by B1 inhomogeneities\n* Get S_0,T2*: acquire first point at short TE and then extrapolate to timpeoint 0 with 3rd order polynomial", 
                     "type": "text"
+                }, 
+                {
+                    "$$hashKey": "01W", 
+                    "class": "bs-callout bs-callout-danger", 
+                    "text": "####TODO:\n\nFind a phantom to take to europe! Possibly with asparagus for diffusion.", 
+                    "type": "text"
+                }, 
+                {
+                    "$$hashKey": "024", 
+                    "class": "", 
+                    "text": "####BIPS preprocessing \n\n* needs freesurfer subject directories named the same as subject id's for fMRI data. Here is a notebook that symlinks with the proper name for easy processing.", 
+                    "type": "text"
+                }, 
+                {
+                    "$$hashKey": "020", 
+                    "height": "1000", 
+                    "info": {
+                        "height": "500", 
+                        "url": "http://nbviewer.ipython.org/urls/dl.dropboxusercontent.com/u/9020198/notebooks/SymlinkFS.ipynb?create=1"
+                    }, 
+                    "type": "ipynb"
                 }
             ], 
             "href": "Reports", 
