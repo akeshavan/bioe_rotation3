@@ -2,7 +2,7 @@
     "sidebars": [
         {
             "$$hashKey": "004", 
-            "class": "active", 
+            "class": "", 
             "content": [
                 {
                     "$$hashKey": "00F", 
@@ -91,8 +91,54 @@
         }, 
         {
             "$$hashKey": "0QD", 
-            "class": "", 
-            "content": [], 
+            "class": "active", 
+            "content": [
+                {
+                    "$$hashKey": "026", 
+                    "class": "", 
+                    "text": "###Tuesday March 11, 2014\n\n* Modelled our multi-site study in an ipython notebook", 
+                    "type": "text"
+                }, 
+                {
+                    "$$hashKey": "02A", 
+                    "height": "1000", 
+                    "info": {
+                        "height": "500", 
+                        "url": "http://nbviewer.ipython.org/urls/dl.dropboxusercontent.com/u/9020198/notebooks/LeastSquares.ipynb"
+                    }, 
+                    "type": "ipynb"
+                }, 
+                {
+                    "$$hashKey": "02E", 
+                    "class": "", 
+                    "text": "---\n###Wednesday, March 12,2014\n* More multi-site modelling", 
+                    "type": "text"
+                }, 
+                {
+                    "$$hashKey": "02I", 
+                    "height": "1000", 
+                    "info": {
+                        "height": "500", 
+                        "url": "http://nbviewer.ipython.org/urls/dl.dropboxusercontent.com/u/9020198/notebooks/MultiSite.ipynb"
+                    }, 
+                    "type": "ipynb"
+                }, 
+                {
+                    "$$hashKey": "02M", 
+                    "class": "", 
+                    "text": "---\n###Thursday, March 13, 2014\n\n* Simplified yesterday's notebook to run multiple models/simulations on the same site", 
+                    "type": "text"
+                }, 
+                {
+                    "$$hashKey": "02Q", 
+                    "height": "1000", 
+                    "info": {
+                        "height": "500", 
+                        "url": "http://nbviewer.ipython.org/gist/akeshavan/9541615"
+                    }, 
+                    "type": "ipynb"
+                }
+            ], 
             "href": "Week-2", 
             "title": "Week 2"
         }

@@ -10,6 +10,14 @@ from matplotlib.pylab import *
 import seaborn as sns
 from copy import deepcopy
 import pandas as pd
+import rpy2.robjects as ro
+eq = ro.packages.importr("equivalence")
+import scipy.stats as stats
+from IPython.display import HTML
+from scipy.interpolate import interp1d, InterpolatedUnivariateSpline
+import matplotlib as mpl
+mpl.rc("text",usetex=True)
+from statsmodels.distributions.empirical_distribution import ECDF
 
 def plot_dist(vars,names,title=''):
     k = len(names)
@@ -189,11 +197,17 @@ def run_combined_models(o,plot=False,write=False,int_0=True):
           cmap = ppl.set2[2:])
 
 
+def to_percentile(sim,ref_key,key):
+    foo = ECDF(sim[ref_key],side="right")
+    return foo(sim[key])
+
 
 
 def sim_data(n_hc,n_ms,age_hc_range,age_ms_range,
              alpha_a,alpha_d,b0,sig_b,d_dist,
-             sig_s,alpha,gamma,delta_z=None):
+             sig_s,alpha,gamma, alpha_hc=None,
+             gamma_hc=None,lo_mean=[2,2],lo_sig=[1.1,1.1],
+             hi_mean=[6,6],hi_sig=[0.8,0.8]):
 
     o = {}
 
@@ -201,47 +215,69 @@ def sim_data(n_hc,n_ms,age_hc_range,age_ms_range,
     o['age_ms_1'] = linspace(*age_ms_range[0],num = n_ms[0])
     o['age_ms_2'] = linspace(*age_ms_range[1],num = n_ms[1])
 
-    o['dis_1'] = np.random.binomial(1,d_dist[0],n_ms[0])*np.random.normal(2,1.1,n_ms[0]) +\
-                    np.random.binomial(1,1-d_dist[0],n_ms[0])*np.random.normal(6,0.8,n_ms[0])
+    o['dis_1'] = np.random.binomial(1,d_dist[0],n_ms[0])*np.random.normal(lo_mean[0],lo_sig[0],n_ms[0]) +\
+                    np.random.binomial(1,1-d_dist[0],n_ms[0])*np.random.normal(hi_mean[0],hi_sig[0],n_ms[0])
     o['dis_1'][o['dis_1']<0] = 0 #EDSS Cannot be below 0
     o['dis_1'][o['dis_1']>10] = 10 #EDSS Cannot be >10
-
+    
     o['BV_hc_1_real'] = alpha_a*o['age_hc'] + np.random.normal(b0,sig_b[0],n_hc)
+    if alpha_hc is not None and gamma_hc is not None:
+        o['BV_hc_1_real'] = alpha_hc[0]*o['BV_hc_1_real'] + gamma_hc[0]
+    
     o['BV_hc_1'] = alpha[0] * o['BV_hc_1_real'] + gamma[0] + np.random.normal(0,sig_s[0],n_hc)
 
     o['BV_ms_1_real'] = alpha_a*o['age_ms_1'] + np.random.normal(b0,sig_b[0],n_ms[0]) + alpha_d[0] * o['dis_1']
     o['BV_ms_1'] = alpha[0] * o['BV_ms_1_real'] + gamma[0] + np.random.normal(0,sig_s[0],n_ms[0])
 
-    o['dis_2'] = np.random.binomial(1,d_dist[1],n_ms[1])*np.random.normal(2,1.1,n_ms[1]) +\
-                 np.random.binomial(1,1-d_dist[1],n_ms[1])*np.random.normal(6,0.8,n_ms[1])
+    o['dis_2'] = np.random.binomial(1,d_dist[1],n_ms[1])*np.random.normal(lo_mean[1],lo_sig[1],n_ms[1]) +\
+                 np.random.binomial(1,1-d_dist[1],n_ms[1])*np.random.normal(hi_mean[1],hi_sig[1],n_ms[1])
     o['dis_2'][o['dis_2']<0] = 0 #EDSS Cannot be below 0
     o['dis_2'][o['dis_2']>10] = 10 #EDSS Cannot be >10
 
     o['BV_hc_2_real'] = alpha_a*o['age_hc'] + np.random.normal(b0,sig_b[1],n_hc)
+    if alpha_hc is not None and gamma_hc is not None:
+        o['BV_hc_2_real'] = alpha_hc[1]*o['BV_hc_2_real'] + gamma_hc[1]
+        
     o['BV_hc_2'] = alpha[1]* o["BV_hc_2_real"] +  gamma[1] + np.random.normal(0,sig_s[1],n_hc)
+
+    o["Pr_1_lo"] = stats.norm.pdf((o["dis_1"] - 2)/1.1)
+    o["Pr_1_hi"] = stats.norm.pdf((o["dis_1"] - 6)/0.8)
+    o["llr_1"] = log(o["Pr_1_lo"]/o["Pr_1_hi"]) > 0
+
+    o["Pr_2_lo"] = stats.norm.pdf((o["dis_2"] - 2)/1.1)
+    o["Pr_2_hi"] = stats.norm.pdf((o["dis_2"] - 6)/0.8)
+    o["llr_2"] = log(o["Pr_2_lo"]/o["Pr_2_hi"]) > 0
 
     o['BV_ms_2_real'] = alpha_a*o['age_ms_2'] + np.random.normal(b0,sig_b[1],n_ms[1]) + alpha_d[1] * o['dis_2']
     o['BV_ms_2'] = alpha[1] * o['BV_ms_2_real'] + gamma[1] + np.random.normal(0,sig_s[1],n_ms[1])
 
     o['BV_all_ms'] = np.hstack((o['BV_ms_1'],o['BV_ms_2']))
-    
+
     o['dis_all'] = np.hstack((o['dis_1'],o['dis_2']))
     o['age_all_ms'] = np.hstack((o['age_ms_1'],o['age_ms_2']))
 
     o['age_all_hc'] = np.hstack((o['age_hc'],o['age_hc']))
     o['dis_all'] = np.hstack((o['dis_1'],o['dis_2']))
     o['BV_all_hc'] = np.hstack((o['BV_hc_1'],o['BV_hc_2']))
-    
+
     o['BV_all_all'] = np.hstack((o['BV_all_ms'],o['BV_all_hc']))
     o['age_all_all'] = np.hstack((o['age_all_ms'],o['age_all_hc']))
     o['dis_all_all'] = np.hstack((o['dis_all'],np.zeros(n_hc*2)))
-    
-    
+
     o['protocol_ms'] = np.hstack((np.ones(n_ms[0]),np.zeros(n_ms[1])))
     o['protocol_all'] = np.hstack((o['protocol_ms'],np.ones(n_hc),np.zeros(n_hc)))
     o['subject_type'] = np.hstack((np.ones(sum(n_ms)),np.zeros(n_hc*2)))
 
     return o
+
+def run_p_calib(o):
+    o["pBV_hc_1"] = to_percentile(o,"BV_hc_1","BV_hc_1")
+    o["pBV_hc_2"] = to_percentile(o,"BV_hc_2","BV_hc_2")
+    o["pBV_ms_1"] = to_percentile(o,"BV_hc_1","BV_ms_1")
+    o["pBV_ms_2"] = to_percentile(o,"BV_hc_2","BV_ms_2")
+    o["pBV_ms_all"] = np.hstack((o["pBV_ms_1"],o["pBV_ms_2"]))
+    o["llr_all"] = np.hstack((o["llr_1"],o["llr_2"]))   
+
 
 
 def grid(o,n_range,parameter,n_boot=10):
@@ -319,18 +355,17 @@ def plot_grid(coefs,errs,hc_age_range,name,title="Calibration Coefficients"):
     ax[0].set_ylabel("Intercept")
     ax[1].set_ylabel("Disease")
 
-
 def plot_grid_box(coefs,d_range,coef_names,title="",d_range_name="",ax=None):
     n_coefs = coefs.shape[0]
     if ax == None:
         fig,ax = subplots(1,n_coefs,figsize=(5*n_coefs,5))
     if n_coefs == 1: ax = [ax]
     for i,a in enumerate(ax):
-        sns.boxplot(coefs[i,:,:].T,color="pastel",ax=a)
+        sns.boxplot(coefs[i,:,:].T,ax=a,color="Set2")
         a.set_xticklabels(d_range)
         a.set_xlabel(d_range_name)
         a.set_title(coef_names[i]);
-    
+
     suptitle(title,size=14)
     return ax
 
@@ -386,5 +421,174 @@ def add_grid(diff_dis,key,a,n_ms_range,df):
         df = set_df(a,df)
     return df
 
+params = {'n_hc':50, #number of controls
+          'n_ms':[250,100], #number of MS patients at each site
+          'age_hc_range':(20,52), # Age range of the controls
+          'age_ms_range':[(20,45),(20,75)], # Age range of MS patients at each site
+          'd_dist':[.65,.88], # Distribution weighting of EDSS scores for each site
+          'alpha_a':-3, # Real coefficient of age
+          'alpha_d':[-16,-16], # Real coefficient of EDSS score
+          'b0':1644, #Brain Volume Intercept (in ccs)
+          'sig_b':[57,57], # Brain variation across subjects (in ccs) for each site
+          'sig_s':[16,16], # Variability in brain volume measurement across scanners for each site
+          'alpha':[0.7,1.3], # Scaling of each scanner
+          'gamma':[20,-20] # Offset of each scanner
+          }
 
+def run_sim(age_euro_orig=np.array([24,24,24,38,37,32,28,30,32,32,50]),
+         params=params,n_scans=2,keep_subs=False):
+    sim = sim_data(**params)    
+    n_euro = len(age_euro_orig)
+    BV_euro_real_orig = params['alpha_a']*age_euro_orig + \
+                        np.random.normal(params['b0'],params['sig_b'][0],n_euro)
+    BV_euro_real = BV_euro_real_orig; 
+    age_euro=age_euro_orig
+            
+    BV_euro_1 = params['alpha'][0]*BV_euro_real+\
+                np.random.normal(params['gamma'][0],params['sig_s'][0]*1/sqrt(n_scans),n_euro)
+    BV_euro_2 = params['alpha'][1]*BV_euro_real+\
+                np.random.normal(params['gamma'][1],params['sig_s'][1]*1/sqrt(n_scans),n_euro)
+        
+    if keep_subs:
+        sim['BV_hc_1'] = np.hstack((sim['BV_hc_1'],BV_euro_1))
+        sim['BV_hc_2'] = np.hstack((sim['BV_hc_2'],BV_euro_2))
+        sim['age_hc'] = np.hstack((sim['age_hc'],age_euro))
+         
+    run_calib(sim,False)
+    #z_site_1 = (sim['BV_hc_1'] - sim['hc_1_calib'].fittedvalues)/\
+    #     np.std(sim['BV_hc_1'] - sim['hc_1_calib'].fittedvalues)
+    #z_site_2 = (sim['BV_hc_2'] - sim['hc_2_calib'].fittedvalues)/\
+    #     np.std(sim['BV_hc_2'] - sim['hc_2_calib'].fittedvalues)
+    
+    z_site_1 = sim["calib"].predict(sm.add_constant(sim["BV_hc_1"]))
+    z_site_2 = sim["BV_hc_2"]
+    
+    if keep_subs:
+        z_euro_1 = z_site_1[-n_euro:]
+        z_euro_2 = z_site_2[-n_euro:]
+        
+    else:
+        #euro_1 = (BV_euro_1 - sim['hc_1_calib'].predict(sm.add_constant(age_euro)))
+        #euro_2 = (BV_euro_2 - sim['hc_2_calib'].predict(sm.add_constant(age_euro)))
+        
+        z_euro_1 = sim["calib"].predict(sm.add_constant(BV_euro_1))
+        z_euro_2 = BV_euro_2
+        
+        #z_euro_1 = euro_1/np.std(euro_1)
+        #z_euro_2 = euro_2/np.std(euro_2)
+    
+    zdiff = np.abs(z_euro_1-z_euro_2)/z_euro_2 #Now delta can be in units of percent
+    return zdiff
+
+def run_percentile_sim(age_euro_orig=np.array([24,24,24,38,37,32,28,30,32,32,50]),
+         params=params,n_scans=2,keep_subs=False):
+    sim = sim_data(**params)    
+    n_euro = len(age_euro_orig)
+    BV_euro_real_orig = params['alpha_a']*age_euro_orig + \
+                        np.random.normal(params['b0'],params['sig_b'][0],n_euro)
+    BV_euro_real = BV_euro_real_orig; 
+    age_euro=age_euro_orig
+            
+    BV_euro_1 = params['alpha'][0]*BV_euro_real+\
+                np.random.normal(params['gamma'][0],params['sig_s'][0]*1/sqrt(n_scans),n_euro)
+    BV_euro_2 = params['alpha'][1]*BV_euro_real+\
+                np.random.normal(params['gamma'][1],params['sig_s'][1]*1/sqrt(n_scans),n_euro)
+        
+    if keep_subs:
+        sim['BV_hc_1'] = np.hstack((sim['BV_hc_1'],BV_euro_1))
+        sim['BV_hc_2'] = np.hstack((sim['BV_hc_2'],BV_euro_2))
+        sim['age_hc'] = np.hstack((sim['age_hc'],age_euro))
+         
+    run_p_calib(sim)
+    
+    z_site_1 = sim["pBV_hc_1"]
+    z_site_2 = sim["pBV_hc_2"]
+    
+    if keep_subs:
+        z_euro_1 = z_site_1[-n_euro:]
+        z_euro_2 = z_site_2[-n_euro:]
+        
+    else:
+        sim["BV_euro_1"] = BV_euro_1
+        sim["BV_euro_2"] = BV_euro_2
+        z_euro_1 = to_percentile(sim,"BV_hc_1","BV_euro_1")
+        z_euro_2 = to_percentile(sim,"BV_hc_2","BV_euro_2")
+    
+    zdiff = np.abs(z_euro_1 - z_euro_2)
+    #np.abs(z_euro_1-z_euro_2)/z_euro_2 #Now delta can be in units of percent
+    return zdiff
+
+
+
+def boot(n_boot,age_euro_orig=np.array([24,24,24,38,37,32,28,30,32,32,50]),
+         params=params,n_scans=2,keep_subs=False,sim_type=run_sim):
+    
+    Diffs = np.zeros((n_boot,len(age_euro_orig)))
+    
+    for i in range(n_boot):
+        zdiff = sim_type(age_euro_orig,params,n_scans,keep_subs)
+        Diffs[i,:] = zdiff
+    return Diffs
+
+def eq_test(pdiff,delta):
+    import rpy2.robjects as ro
+    eq = ro.packages.importr("equivalence")
+    import numpy as np
+
+    x = ro.FloatVector(pdiff)
+    base = ro.packages.importr("base")
+    e = delta/std(pdiff)
+    res = eq.ptte_data(x,Epsilon=e)
+    P = res.rx("Power")[0][0]
+    T = res.rx("Tstat")[0][0]
+    C = res.rx("cutoff")[0][0]
+    return P,T,C
+
+
+def get_table(a):
+    data = [["Parameter","Site 1","Site 2"]]
+    for key, val in sorted(a.iteritems()):
+        if isinstance(val,list):
+            data.append([key, "%s"%str(val[0]), "%s"%str(val[1])])
+        else:
+            data.append([key,str(val),str(val)])
+    txt = """\\begin{tabular}{llll}"""
+    txtend = """\\end{tabular}"""
+    for i,row in enumerate(data):
+        txt+=" & ".join(row).replace("_"," ")
+        txt+=("""\\\ \\hline """)
+    txt += txtend
+    return txt
+
+def test_all(pdiff,test_E = arange(0.001,0.01,0.0005)):
+    import rpy2.robjects as ro
+    eq = ro.packages.importr("equivalence")
+    import numpy as np
+
+    def eq_test(pdiff,delta):
+        x = ro.FloatVector(pdiff)
+        base = ro.packages.importr("base")
+        e = delta/std(pdiff)
+        res = eq.ptte_data(x,Epsilon=e)
+        P = res.rx("Power")[0][0]
+        T = res.rx("Tstat")[0][0]
+        C = res.rx("cutoff")[0][0]
+        return P,T,C
+
+    Ps = np.zeros(len(test_E))
+    Ts = np.zeros(len(test_E))
+    Cs = np.zeros(len(test_E))
+    #test_E = arange(0.25,1,0.05)
+    for i,e in enumerate(test_E):
+        p,t,c = eq_test(pdiff,e)
+        Ps[i] = p
+        Cs[i] = c
+        Ts[i] = t
+    return Ps, Ts, Cs
+
+def draw_interp(x,y,ax,**kwargs):
+    f2 = InterpolatedUnivariateSpline(x, y)
+    ppl.plot(ax,linspace(min(x),max(x),100),
+             f2(linspace(min(x),max(x),100)),
+             **kwargs)
 
