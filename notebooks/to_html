@@ -1,0 +1,2 @@
+#!/bin/bash
+ipython nbconvert $1 --template 10297417/output_toggle_html.tpl 
