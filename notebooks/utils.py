@@ -18,6 +18,7 @@ from scipy.interpolate import interp1d, InterpolatedUnivariateSpline
 import matplotlib as mpl
 mpl.rc("text",usetex=True)
 from statsmodels.distributions.empirical_distribution import ECDF
+import sklearn.linear_model as lm
 
 def plot_dist(vars,names,title=''):
     k = len(names)
@@ -70,7 +71,10 @@ def run_model(xi,y, model=sm.OLS,write=True,add_intercept=True,yname=None,xnames
     if add_intercept:
         X = sm.add_constant(X)
     m = model(y,X)
-    res = m.fit()
+    if model == sm.Logit:
+        res = m.fit(disp=False)
+    else:
+        res = m.fit()
     if write:
         print res.summary(yname=yname,xname=xnames,title=title)
     return res
@@ -184,18 +188,25 @@ def run_separate_models(o,plot=False,write=False):
                 ["Site 1","Site 2"])
 
 
-def run_combined_models(o,plot=False,write=False,int_0=True):
-    o['combine_v1_ms'] = run_model([o['age_all_ms'],o['dis_all']],o['BV_all_ms'],sm.RLM,write)
-    o['combine_v2_ms'] = run_model([o['age_all_ms'],o['dis_all'],o['protocol_ms']],o['BV_all_ms'],sm.RLM,write)
-    o['combine_z_calib'] = run_model([o["dis_all"]],o["BV_all_z"],sm.RLM,write,int_0)
+def run_combined_models(o,plot=False,write=False,int_0=True,model=sm.RLM):
+    o['combine_v1_ms'] = run_model([o['age_all_ms'],o['dis_all']],o['BV_all_ms'],model,write)
+    o['combine_v2_ms'] = run_model([o['age_all_ms'],o['dis_all'],o['protocol_ms']],o['BV_all_ms'],model,write)
+    o['combine_z_calib'] = run_model([o["dis_all"]],o["BV_all_z"],model,write,int_0)
+    o['combine_p_calib'] = run_model([o["age_all_ms"],o["dis_all"]],o["pBV_ms_all"],model,write,int_0)
     #o['combine_v3'] = run_model([o['age_all_ms'],o['dis_all']],o['BV_all_calib'],sm.RLM, write)
-    if plot:
+    """if plot:
         plot_coef_split([o['combine_v1_ms'].params, o['combine_v2_ms'].params[:3]],#, o['combine_v3'].params],
           [o['combine_v1_ms'].bse, o['combine_v2_ms'].bse[:3]],#, o['combine_v3'].bse],
           ["const","age","disease"],
           ["Combined","Protocol"],#, "Calibrated"],
-          cmap = ppl.set2[2:])
+          cmap = ppl.set2[2:])"""
 
+def run_combined_log_models(o,plot=False,write=False,int_0=True,model=sm.Logit):
+    o['combine_v1_ms'] = run_model([o['age_all_ms'],o['BV_all_ms']],o['llr_all'],model,write)
+    o['combine_v2_ms'] = run_model([o['age_all_ms'],o['BV_all_ms'],o['protocol_ms']],o['llr_all'],model,write)
+    o['combine_z_calib'] = run_model([o["BV_all_z"]],o["llr_all"],model,write,int_0)
+    o['combine_p_calib'] = run_model([o["age_all_ms"],o["pBV_ms_all"]],o["llr_all"],model,write,int_0)
+ 
 
 def to_percentile(sim,ref_key,key):
     foo = ECDF(sim[ref_key],side="right")
@@ -277,26 +288,40 @@ def run_p_calib(o):
     o["pBV_ms_2"] = to_percentile(o,"BV_hc_2","BV_ms_2")
     o["pBV_ms_all"] = np.hstack((o["pBV_ms_1"],o["pBV_ms_2"]))
     o["llr_all"] = np.hstack((o["llr_1"],o["llr_2"]))   
+    #o["llr_all_all"] = np.hstack((o["llr_all"], np.zeros(len(o["pBV_hc_1"])+len(o["pBV_hc_2"]))))
+    o['pBV_all_hc'] = np.hstack((o['pBV_hc_1'],o['pBV_hc_2']))
+    o['pBV_all_ms'] = np.hstack((o['pBV_ms_1'],o['pBV_ms_2']))
+    o['pBV_all_all'] = np.hstack((o['pBV_all_ms'],o['pBV_all_hc']))
 
 
 
-def grid(o,n_range,parameter,n_boot=10):
+
+def grid(o,n_range,parameter,n_boot=10,model=sm.RLM,combine_type=run_combined_models):
     # These are for the z calibration model
     z_coefs = np.zeros((2,len(n_range),n_boot))
     z_errs = np.zeros((2,len(n_range),n_boot))
     z_z = np.zeros((2,len(n_range),n_boot))
     z_conf = np.zeros((2,2,len(n_range),n_boot))
-    #These are for the protocol combined model
+    #These are for the p calibrated model
     p_coefs = np.zeros((3,len(n_range),n_boot))
     p_errs = np.zeros((3,len(n_range),n_boot))
     p_z = np.zeros((3,len(n_range),n_boot))
     p_conf = np.zeros((3,2,len(n_range),n_boot))
-    #Combined calibration
-    cc_coefs = np.zeros((5,len(n_range),n_boot))
-    cc_errs = np.zeros((5,len(n_range),n_boot))
-    cc_z = np.zeros((5,len(n_range),n_boot))
-    cc_conf = np.zeros((5,2,len(n_range),n_boot))
-    
+
+    #Combined Protcol calibration (z) or logistic
+    if not model==sm.Logit: num = 5
+    else: num = 4
+    cc_coefs = np.zeros((num,len(n_range),n_boot))
+    cc_errs = np.zeros((num,len(n_range),n_boot))
+    cc_z = np.zeros((num,len(n_range),n_boot))
+    cc_conf = np.zeros((num,2,len(n_range),n_boot))
+
+    # Combined Protocol+Percentile Calibration
+    ccp_coefs = np.zeros((5,len(n_range),n_boot))
+    ccp_errs = np.zeros((5,len(n_range),n_boot))
+    ccp_z = np.zeros((5,len(n_range),n_boot))
+    ccp_conf = np.zeros((5,2,len(n_range),n_boot))
+ 
     for i,n in enumerate(n_range):
         for j in range(n_boot):
             
@@ -306,14 +331,23 @@ def grid(o,n_range,parameter,n_boot=10):
             # Run full model
             sim6 = sim_data(**o)
             run_calib(sim6)
+            run_p_calib(sim6)
             
             #run_hc_model(sim6)
-            run_separate_models(sim6)
-            run_combined_models(sim6)
-            all_calib = run_model([sim6["age_all_all"],sim6["dis_all_all"],
+            #run_separate_models(sim6)
+            combine_type(sim6,model)
+            if not model == sm.Logit:
+                all_calib = run_model([sim6["age_all_all"],sim6["dis_all_all"],
                        sim6["subject_type"],sim6["protocol_all"]],
-                      sim6["BV_all_all"],sm.RLM,write=False)
-            
+                      sim6["BV_all_all"],model,write=False)
+            else:
+                all_calib = sim6["combine_v2_ms"]
+                #all_calib = run_model([sim6["age_all_all"],sim6["BV_all_all"],
+                #       sim6["subject_type"],sim6["protocol_all"]],
+                #      sim6["llr_all_all"],model,write=False)
+      
+
+
             # Grab parameters from z calibrated data
             coef = sim6["combine_z_calib"].params
             err = sim6["combine_z_calib"].bse
@@ -321,24 +355,32 @@ def grid(o,n_range,parameter,n_boot=10):
             z_errs[:,i,j] = err
             z_conf[:,:,i,j] = sim6["combine_z_calib"].conf_int()
             z_z[:,i,j] = sim6["combine_z_calib"].tvalues
-            
-            # Grab parameters from protocol calibrated data
-            coef_real = sim6["combine_v2_ms"].params[:3]
-            err_real = sim6["combine_v2_ms"].bse[:3]
-            p_coefs[:,i,j] = coef_real
-            p_errs[:,i,j] = err_real
-            p_conf[:,:,i,j] = sim6["combine_v2_ms"].conf_int()[:3,:]
-            p_z[:,i,j] = sim6["combine_v2_ms"].tvalues[:3]
-            
+
+            # Grab parameters from p calibrated data
+            coef = sim6["combine_p_calib"].params
+            err = sim6["combine_p_calib"].bse
+            p_coefs[:,i,j] = coef
+            p_errs[:,i,j] = err
+            p_conf[:,:,i,j] = sim6["combine_p_calib"].conf_int()
+            p_z[:,i,j] = sim6["combine_p_calib"].tvalues
+             
+            # All z calib          
             coef = all_calib.params
             err = all_calib.bse
             cc_coefs[:,i,j] = coef
             cc_errs[:,i,j] = err
             cc_conf[:,:,i,j] = all_calib.conf_int()
             cc_z[:,i,j] = all_calib.tvalues
-        
-    return z_coefs, z_errs, z_conf, z_z, p_coefs, p_errs, p_conf, p_z,cc_coefs, cc_errs,cc_conf,cc_z
 
+            # All p calib
+            """coef = all_p_calib.params
+            err = all_p_calib.bse
+            ccp_coefs[:,i,j] = coef
+            ccp_errs[:,i,j] = err
+            ccp_conf[:,:,i,j] = all_p_calib.conf_int()
+            ccp_z[:,i,j] = all_p_calib.tvalues"""
+         
+    return (z_coefs, z_errs, z_conf, z_z), (p_coefs, p_errs, p_conf, p_z),(cc_coefs, cc_errs,cc_conf,cc_z)
 
 
 def plot_grid(coefs,errs,hc_age_range,name,title="Calibration Coefficients"):
@@ -560,6 +602,9 @@ def get_table(a):
     txt += txtend
     return txt
 
+def anisha():
+    return None
+
 def test_all(pdiff,test_E = arange(0.001,0.01,0.0005)):
     import rpy2.robjects as ro
     eq = ro.packages.importr("equivalence")
@@ -591,4 +636,46 @@ def draw_interp(x,y,ax,**kwargs):
     ppl.plot(ax,linspace(min(x),max(x),100),
              f2(linspace(min(x),max(x),100)),
              **kwargs)
+
+def run_log_model(xi,y,add_intercept=True):
+    import sklearn.linear_model as lm
+    a = lm.LogisticRegression()
+    k = len(xi)
+    X = xi[0]
+
+    for i in range(1,k):
+        X = np.column_stack((X,xi[i]))
+    if add_intercept:
+        X = sm.add_constant(X)
+
+    a.fit(X,y)
+    
+    #ROC
+    roc_info = map(get_ROC,[X]*100,[y]*100)
+    roc_info = np.asarray(roc_info)
+    fpr = roc_info[:,0]
+    tpr = roc_info[:,1]
+    auc = roc_info[:,2]
+
+    return np.mean(auc)
+
+def get_ROC(X,y):
+    from sklearn.metrics import roc_curve, auc
+    from sklearn.utils import shuffle
+    import sklearn.linear_model as lm
+    X, y = shuffle(X, y)
+    half = int(len(y) / 2)
+    X_train, X_test = X[:half], X[half:]
+    y_train, y_test = y[:half], y[half:]
+
+    # Run classifier
+    classifier = lm.LogisticRegression()
+    classifier.fit(X_train, y_train)
+    probas_ = classifier.predict_proba(X_test)
+
+    # Compute ROC curve and area the curve
+    fpr, tpr, thresholds = roc_curve(y_test, probas_[:, 1])
+    roc_auc = auc(fpr, tpr)
+    return fpr,tpr,roc_auc
+
 
